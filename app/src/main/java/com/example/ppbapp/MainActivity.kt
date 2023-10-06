@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -18,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -30,10 +32,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.compose.AppTheme
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,6 +67,29 @@ fun LoginPage() {
     var username = remember { mutableStateOf("") }
     var password = remember { mutableStateOf("") }
     var rememberMe = remember { mutableStateOf(false) }
+    var passwordVisible = remember { mutableStateOf(false) }
+
+    val baseUrl = "http://10.217.17.11:1337/api/"
+    val retrofit =
+        Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(LoginService::class.java)
+    var jwt = remember { mutableStateOf("") }
+    val call = retrofit.getData(LoginData("npc satu", "user123"))
+    call.enqueue(object : Callback<LoginRespond> {
+        override fun onResponse(call: Call<LoginRespond>, response: Response<LoginRespond>) {
+            if (response.code() == 200) {
+                jwt.value = response.body()?.jwt!!
+            }
+        }
+
+        override fun onFailure(call: Call<LoginRespond>, t: Throwable) {
+            print(t.message)
+        }
+    })
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -75,6 +108,7 @@ fun LoginPage() {
             OutlinedTextField(
                 value = username.value,
                 onValueChange = { username.value = it },
+                singleLine = true,
                 label = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -93,6 +127,7 @@ fun LoginPage() {
             OutlinedTextField(
                 value = password.value,
                 onValueChange = { password.value = it },
+                singleLine = true,
                 label = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -106,7 +141,28 @@ fun LoginPage() {
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(50)
+                shape = RoundedCornerShape(50),
+                visualTransformation =
+                if (passwordVisible.value)
+                    VisualTransformation.None
+                else
+                    PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingIcon = {
+                    IconButton(
+                        onClick = { passwordVisible.value = !passwordVisible.value },
+                        modifier = Modifier.padding(end = 10.dp)
+                    ) {
+                        Icon(
+                            painter =
+                            if (passwordVisible.value)
+                                painterResource(id = R.drawable.eye_slash_solid)
+                            else
+                                painterResource(id = R.drawable.eye_solid),
+                            contentDescription = "Toggle Password"
+                        )
+                    }
+                }
             )
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -139,6 +195,7 @@ fun LoginPage() {
             ) {
                 Text(text = "Login")
             }
+            Text(text = jwt.value)
         }
     }
 
