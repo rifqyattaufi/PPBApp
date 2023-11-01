@@ -1,4 +1,4 @@
-package com.example.ppbapp
+package com.example.ppbapp.Respond
 
 import com.google.gson.annotations.SerializedName
 

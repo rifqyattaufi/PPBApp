@@ -13,16 +13,20 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -33,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -51,6 +56,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.compose.AppTheme
+import com.example.ppbapp.Data.LoginData
+import com.example.ppbapp.Respond.LoginRespond
+import com.example.ppbapp.Respond.UserRespond
+import com.example.ppbapp.Service.LoginService
+import com.example.ppbapp.Service.UserService
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -304,7 +314,41 @@ fun LoginPage(context: Context = LocalContext.current, navController: NavControl
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(navController: NavController, context: Context = LocalContext.current) {
+    val openDeleteAlertDialog = remember { mutableStateOf(false) }
     val preferenceManager = remember { PreferencesManager(context = context) }
+    val listUser = remember { mutableStateListOf<UserRespond>() }
+    var baseUrl = "http://10.0.2.2:1337/api/"
+    val retrofit = Retrofit
+        .Builder()
+        .baseUrl(baseUrl)
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(UserService::class.java)
+    val call = retrofit.getData()
+    call.enqueue(object : Callback<List<UserRespond>> {
+        override fun onResponse(
+            call: Call<List<UserRespond>>,
+            response: Response<List<UserRespond>>
+        ) {
+            if (response.code() == 200) {
+                listUser.clear()
+                response.body()?.forEach { userRespond ->
+                    listUser.add(userRespond)
+                }
+            } else if (response.code() == 400) {
+                print("error login")
+                var toast = Toast.makeText(
+                    context,
+                    "Koneksi Gagal",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+
+        override fun onFailure(call: Call<List<UserRespond>>, t: Throwable) {
+            print(t.message)
+        }
+    })
 
     Scaffold(
         topBar = {
@@ -324,7 +368,15 @@ fun HomePage(navController: NavController, context: Context = LocalContext.curre
                     }
                 }
             )
-        }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    navController.navigate("createUser")
+                }) {
+                Icon(Icons.Default.Add, contentDescription = "Add")
+            }
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -332,7 +384,61 @@ fun HomePage(navController: NavController, context: Context = LocalContext.curre
                 .padding(innerPadding),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(text = "Home Page")
+            LazyColumn() {
+                listUser.forEach { user ->
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .padding(10.dp)
+                                .fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = user.username)
+                            Button(
+                                onClick = {
+                                    val retrofit = Retrofit
+                                        .Builder()
+                                        .baseUrl(baseUrl)
+                                        .addConverterFactory(GsonConverterFactory.create())
+                                        .build()
+                                        .create(UserService::class.java)
+                                    val call = retrofit.delete(user.id)
+                                    call.enqueue(object : Callback<UserRespond> {
+                                        override fun onResponse(
+                                            call: Call<UserRespond>,
+                                            response: Response<UserRespond>
+                                        ) {
+                                            if (response.code() == 200) {
+                                                listUser.remove(user)
+                                            } else if (response.code() == 400) {
+                                                print("error login")
+                                                var toast = Toast.makeText(
+                                                    context,
+                                                    "Koneksi Gagal",
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                            }
+                                        }
+
+                                        override fun onFailure(
+                                            call: Call<UserRespond>,
+                                            t: Throwable
+                                        ) {
+                                            print(t.message)
+                                        }
+                                    })
+                                }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
