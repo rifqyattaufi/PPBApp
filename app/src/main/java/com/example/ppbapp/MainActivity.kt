@@ -3,11 +3,13 @@ package com.example.ppbapp
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,6 +17,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
@@ -98,32 +101,11 @@ fun LoginPage(context: Context = LocalContext.current, navController: NavControl
     var password = remember { mutableStateOf("") }
     var rememberMe = remember { mutableStateOf(false) }
     var passwordVisible = remember { mutableStateOf(false) }
-
     val baseUrl = "http://10.0.2.2:1337/api/"
-    val retrofit =
-        Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(LoginService::class.java)
-    var jwt = remember { mutableStateOf("") }
-    jwt.value = preferencesManager.getData("jwt")
-    val call = retrofit.getData(LoginData("npc satu", "user123"))
-    call.enqueue(object : Callback<LoginRespond> {
-        override fun onResponse(call: Call<LoginRespond>, response: Response<LoginRespond>) {
-            if (response.code() == 200) {
-                preferencesManager.saveData("jwt", response.body()?.jwt!!)
-            }
-        }
-
-        override fun onFailure(call: Call<LoginRespond>, t: Throwable) {
-            print(t.message)
-        }
-    })
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(20.dp, 75.dp, 20.dp, 0.dp),
     ) {
         Text(
@@ -221,69 +203,99 @@ fun LoginPage(context: Context = LocalContext.current, navController: NavControl
                 )
             }
             Button(
-                onClick = { /*TODO*/ },
+                onClick = {
+                    val retrofit = Retrofit
+                        .Builder()
+                        .baseUrl(baseUrl)
+                        .addConverterFactory(GsonConverterFactory.create())
+                        .build()
+                        .create(LoginService::class.java)
+                    val call = retrofit.getData(LoginData(username.value, password.value))
+                    call.enqueue(object : Callback<LoginRespond> {
+                        override fun onResponse(
+                            call: Call<LoginRespond>,
+                            response: Response<LoginRespond>
+                        ) {
+                            if (response.code() == 200) {
+                                preferencesManager.saveData("jwt", response.body()?.jwt!!)
+                                navController.navigate("home")
+                            } else if (response.code() == 400) {
+                                var toast = Toast.makeText(
+                                    context,
+                                    "Invalid Username Or Password",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+
+                        override fun onFailure(call: Call<LoginRespond>, t: Throwable) {
+                            print(t.message)
+                        }
+                    })
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(text = "Login")
             }
-            Text(text = jwt.value)
         }
-    }
-
-    Column(verticalArrangement = Arrangement.Bottom) {
         Column(
             modifier = Modifier
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-            Text(text = "Or Sign in With")
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Button(
-                    onClick = { /*TODO*/ },
-                    shape = CircleShape,
+                Text(text = "Or Sign in With")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.google_icon),
-                        contentDescription = "Google"
-                    )
-                }
-                Button(
-                    onClick = { /*TODO*/ },
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.facebook_icon),
-                        contentDescription = "Facebook"
-                    )
-                }
-                Button(
-                    onClick = { /*TODO*/ },
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.twitter_icon),
-                        contentDescription = "Twitter"
-                    )
-                }
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(text = "Don't have an account?")
-                TextButton(
-                    onClick = { /*TODO*/ },
-                    content = {
-                        Text(
-                            text = "Sign Up",
-                            fontWeight = FontWeight(600),
+                    Button(
+                        onClick = { /*TODO*/ },
+                        shape = CircleShape,
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.google_icon),
+                            contentDescription = "Google"
                         )
                     }
-                )
+                    Button(
+                        onClick = { /*TODO*/ },
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.facebook_icon),
+                            contentDescription = "Facebook"
+                        )
+                    }
+                    Button(
+                        onClick = { /*TODO*/ },
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.twitter_icon),
+                            contentDescription = "Twitter"
+                        )
+                    }
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Don't have an account?")
+                    TextButton(
+                        onClick = { /*TODO*/ },
+                        content = {
+                            Text(
+                                text = "Sign Up",
+                                fontWeight = FontWeight(600),
+                            )
+                        }
+                    )
+                }
             }
         }
     }
@@ -292,11 +304,26 @@ fun LoginPage(context: Context = LocalContext.current, navController: NavControl
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(navController: NavController, context: Context = LocalContext.current) {
+    val preferenceManager = remember { PreferencesManager(context = context) }
+
     Scaffold(
         topBar = {
-            TopAppBar(title = {
-                Text(text = "Home Page")
-            })
+            TopAppBar(
+                title = {
+                    Text(text = "Home Page")
+                },
+                actions = {
+                    IconButton(onClick = {
+                        preferenceManager.saveData("jwt", "")
+                        navController.navigate("login")
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.ExitToApp,
+                            contentDescription = "Logout"
+                        )
+                    }
+                }
+            )
         }
     ) { innerPadding ->
         Column(
