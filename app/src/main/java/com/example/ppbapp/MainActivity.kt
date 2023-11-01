@@ -1,5 +1,7 @@
 package com.example.ppbapp
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -22,14 +24,17 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -38,6 +43,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.compose.AppTheme
 import retrofit2.Call
 import retrofit2.Callback
@@ -49,12 +58,32 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val sharedPreferences: SharedPreferences =
+                LocalContext.current.getSharedPreferences("auth", Context.MODE_PRIVATE)
+            val navController = rememberNavController()
+
+            var startDestination: String
+            var jwt = sharedPreferences.getString("jwt", "")
+
+            if (jwt.equals("")) {
+                startDestination = "login"
+            } else {
+                startDestination = "home"
+            }
+
             AppTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    LoginPage()
+                    NavHost(navController, startDestination = startDestination) {
+                        composable(route = "login") {
+                            LoginPage(navController = navController)
+                        }
+                        composable(route = "home") {
+                            HomePage(navController = navController)
+                        }
+                    }
                 }
             }
         }
@@ -63,13 +92,14 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LoginPage() {
+fun LoginPage(context: Context = LocalContext.current, navController: NavController) {
+    val preferencesManager = remember { PreferencesManager(context) }
     var username = remember { mutableStateOf("") }
     var password = remember { mutableStateOf("") }
     var rememberMe = remember { mutableStateOf(false) }
     var passwordVisible = remember { mutableStateOf(false) }
 
-    val baseUrl = "http://10.217.17.11:1337/api/"
+    val baseUrl = "http://10.0.2.2:1337/api/"
     val retrofit =
         Retrofit.Builder()
             .baseUrl(baseUrl)
@@ -77,11 +107,12 @@ fun LoginPage() {
             .build()
             .create(LoginService::class.java)
     var jwt = remember { mutableStateOf("") }
+    jwt.value = preferencesManager.getData("jwt")
     val call = retrofit.getData(LoginData("npc satu", "user123"))
     call.enqueue(object : Callback<LoginRespond> {
         override fun onResponse(call: Call<LoginRespond>, response: Response<LoginRespond>) {
             if (response.code() == 200) {
-                jwt.value = response.body()?.jwt!!
+                preferencesManager.saveData("jwt", response.body()?.jwt!!)
             }
         }
 
@@ -254,6 +285,27 @@ fun LoginPage() {
                     }
                 )
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun HomePage(navController: NavController, context: Context = LocalContext.current) {
+    Scaffold(
+        topBar = {
+            TopAppBar(title = {
+                Text(text = "Home Page")
+            })
+        }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(text = "Home Page")
         }
     }
 }
