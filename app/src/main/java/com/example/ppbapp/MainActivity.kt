@@ -57,9 +57,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.compose.AppTheme
 import com.example.ppbapp.Data.LoginData
+import com.example.ppbapp.Data.RegisterData
 import com.example.ppbapp.Respond.LoginRespond
 import com.example.ppbapp.Respond.UserRespond
 import com.example.ppbapp.Service.LoginService
+import com.example.ppbapp.Service.RegisterService
 import com.example.ppbapp.Service.UserService
 import retrofit2.Call
 import retrofit2.Callback
@@ -75,8 +77,8 @@ class MainActivity : ComponentActivity() {
                 LocalContext.current.getSharedPreferences("auth", Context.MODE_PRIVATE)
             val navController = rememberNavController()
 
-            var startDestination: String
-            var jwt = sharedPreferences.getString("jwt", "")
+            val startDestination: String
+            val jwt = sharedPreferences.getString("jwt", "")
 
             if (jwt.equals("")) {
                 startDestination = "login"
@@ -96,6 +98,9 @@ class MainActivity : ComponentActivity() {
                         composable(route = "home") {
                             HomePage(navController = navController)
                         }
+                        composable(route = "register") {
+                            RegisterPage(navController = navController)
+                        }
                     }
                 }
             }
@@ -107,10 +112,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun LoginPage(context: Context = LocalContext.current, navController: NavController) {
     val preferencesManager = remember { PreferencesManager(context) }
-    var username = remember { mutableStateOf("") }
-    var password = remember { mutableStateOf("") }
-    var rememberMe = remember { mutableStateOf(false) }
-    var passwordVisible = remember { mutableStateOf(false) }
+    val username = remember { mutableStateOf("") }
+    val password = remember { mutableStateOf("") }
+    val rememberMe = remember { mutableStateOf(false) }
+    val passwordVisible = remember { mutableStateOf(false) }
     val baseUrl = "http://10.0.2.2:1337/api/"
 
     Column(
@@ -230,7 +235,7 @@ fun LoginPage(context: Context = LocalContext.current, navController: NavControl
                                 preferencesManager.saveData("jwt", response.body()?.jwt!!)
                                 navController.navigate("home")
                             } else if (response.code() == 400) {
-                                var toast = Toast.makeText(
+                                Toast.makeText(
                                     context,
                                     "Invalid Username Or Password",
                                     Toast.LENGTH_SHORT
@@ -297,7 +302,9 @@ fun LoginPage(context: Context = LocalContext.current, navController: NavControl
                 ) {
                     Text(text = "Don't have an account?")
                     TextButton(
-                        onClick = { /*TODO*/ },
+                        onClick = {
+                            navController.navigate("register")
+                        },
                         content = {
                             Text(
                                 text = "Sign Up",
@@ -314,10 +321,9 @@ fun LoginPage(context: Context = LocalContext.current, navController: NavControl
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(navController: NavController, context: Context = LocalContext.current) {
-    val openDeleteAlertDialog = remember { mutableStateOf(false) }
     val preferenceManager = remember { PreferencesManager(context = context) }
     val listUser = remember { mutableStateListOf<UserRespond>() }
-    var baseUrl = "http://10.0.2.2:1337/api/"
+    val baseUrl = "http://10.0.2.2:1337/api/"
     val retrofit = Retrofit
         .Builder()
         .baseUrl(baseUrl)
@@ -337,7 +343,7 @@ fun HomePage(navController: NavController, context: Context = LocalContext.curre
                 }
             } else if (response.code() == 400) {
                 print("error login")
-                var toast = Toast.makeText(
+                Toast.makeText(
                     context,
                     "Koneksi Gagal",
                     Toast.LENGTH_SHORT
@@ -372,7 +378,7 @@ fun HomePage(navController: NavController, context: Context = LocalContext.curre
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {
-                    navController.navigate("createUser")
+                    navController.navigate("register")
                 }) {
                 Icon(Icons.Default.Add, contentDescription = "Add")
             }
@@ -413,7 +419,7 @@ fun HomePage(navController: NavController, context: Context = LocalContext.curre
                                                 listUser.remove(user)
                                             } else if (response.code() == 400) {
                                                 print("error login")
-                                                var toast = Toast.makeText(
+                                                Toast.makeText(
                                                     context,
                                                     "Koneksi Gagal",
                                                     Toast.LENGTH_SHORT
@@ -437,6 +443,251 @@ fun HomePage(navController: NavController, context: Context = LocalContext.curre
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RegisterPage(navController: NavController, context: Context = LocalContext.current) {
+    val username = remember { mutableStateOf("") }
+    val email = remember { mutableStateOf("") }
+    val password = remember { mutableStateOf("") }
+    val passwordConfirm = remember { mutableStateOf("") }
+    val rememberMe = remember { mutableStateOf(false) }
+    val passwordVisible = remember { mutableStateOf(false) }
+    val passwordVisibleConfirm = remember { mutableStateOf(false) }
+    val baseUrl = "http://10.0.2.2:1337/api/"
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(20.dp, 75.dp, 20.dp, 0.dp),
+    ) {
+        Text(
+            text = "Sign Up",
+            fontWeight = FontWeight(600),
+            fontSize = 43.sp
+        )
+        Column(
+            modifier = Modifier
+                .padding(top = 35.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            OutlinedTextField(
+                value = username.value,
+                onValueChange = { username.value = it },
+                singleLine = true,
+                label = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(text = "Username")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(50)
+            )
+            OutlinedTextField(
+                value = email.value,
+                onValueChange = { email.value = it },
+                singleLine = true,
+                label = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(text = "Email")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(50),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+            )
+            OutlinedTextField(
+                value = password.value,
+                onValueChange = { password.value = it },
+                singleLine = true,
+                label = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(text = "Password")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(50),
+                visualTransformation =
+                if (passwordVisible.value)
+                    VisualTransformation.None
+                else
+                    PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingIcon = {
+                    IconButton(
+                        onClick = { passwordVisible.value = !passwordVisible.value },
+                        modifier = Modifier.padding(end = 10.dp)
+                    ) {
+                        Icon(
+                            painter =
+                            if (passwordVisible.value)
+                                painterResource(id = R.drawable.eye_slash_solid)
+                            else
+                                painterResource(id = R.drawable.eye_solid),
+                            contentDescription = "Toggle Password"
+                        )
+                    }
+                }
+            )
+            OutlinedTextField(
+                value = passwordConfirm.value,
+                onValueChange = { passwordConfirm.value = it },
+                singleLine = true,
+                label = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(text = "Password Confirmation")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(50),
+                visualTransformation =
+                if (passwordVisibleConfirm.value)
+                    VisualTransformation.None
+                else
+                    PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                trailingIcon = {
+                    IconButton(
+                        onClick = { passwordVisibleConfirm.value = !passwordVisibleConfirm.value },
+                        modifier = Modifier.padding(end = 10.dp)
+                    ) {
+                        Icon(
+                            painter =
+                            if (passwordVisibleConfirm.value)
+                                painterResource(id = R.drawable.eye_slash_solid)
+                            else
+                                painterResource(id = R.drawable.eye_solid),
+                            contentDescription = "Toggle Password"
+                        )
+                    }
+                }
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = rememberMe.value,
+                        onCheckedChange = { rememberMe.value = it }
+                    )
+                    Text(
+                        text = "I agree to the",
+                    )
+                    TextButton(
+                        onClick = { /*TODO*/ },
+                        content = {
+                            Text(
+                                text = "Terms",
+                            )
+                        }
+                    )
+                    Text(text = "And")
+                    TextButton(
+                        onClick = { /*TODO*/ },
+                        content = {
+                            Text(
+                                text = "Conditions",
+                            )
+                        }
+                    )
+                }
+            }
+            Button(
+                onClick = {
+                    if (password.value != passwordConfirm.value) {
+                        Toast.makeText(
+                            context,
+                            "Password and Password Confirmation must be same",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        val retrofit = Retrofit
+                            .Builder()
+                            .baseUrl(baseUrl)
+                            .addConverterFactory(GsonConverterFactory.create())
+                            .build()
+                            .create(RegisterService::class.java)
+                        val call = retrofit.saveData(
+                            RegisterData(
+                                email.value,
+                                username.value,
+                                password.value
+                            )
+                        )
+                        call.enqueue(object : Callback<LoginRespond> {
+                            override fun onResponse(
+                                call: Call<LoginRespond>,
+                                response: Response<LoginRespond>
+                            ) {
+                                if (response.code() == 200) {
+                                    navController.popBackStack()
+                                } else if (response.code() == 400) {
+                                    Toast.makeText(
+                                        context,
+                                        "Invalid Username Or Password",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+
+                            override fun onFailure(call: Call<LoginRespond>, t: Throwable) {
+                                print(t.message)
+                            }
+                        })
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Sign Up")
+            }
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxHeight(),
+            verticalArrangement = Arrangement.Bottom
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(text = "Already have an account?")
+                    TextButton(
+                        onClick = {
+                            navController.navigate("login")
+                        },
+                        content = {
+                            Text(
+                                text = "Sign In",
+                                fontWeight = FontWeight(600),
+                            )
+                        }
+                    )
                 }
             }
         }
