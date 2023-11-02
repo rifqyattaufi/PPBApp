@@ -20,11 +20,14 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -37,16 +40,20 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -58,6 +65,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.compose.AppTheme
 import com.example.ppbapp.Data.LoginData
 import com.example.ppbapp.Data.RegisterData
+import com.example.ppbapp.Data.UpdateData
 import com.example.ppbapp.Respond.LoginRespond
 import com.example.ppbapp.Respond.UserRespond
 import com.example.ppbapp.Service.LoginService
@@ -100,6 +108,13 @@ class MainActivity : ComponentActivity() {
                         }
                         composable(route = "register") {
                             RegisterPage(navController = navController)
+                        }
+                        composable(route = "edituser/{userid}/{username}") { backStackEntry ->
+                            EditUserPage(
+                                navController = navController,
+                                userid = backStackEntry.arguments?.getString("userid"),
+                                usernameParameter = backStackEntry.arguments?.getString("username")
+                            )
                         }
                     }
                 }
@@ -401,45 +416,62 @@ fun HomePage(navController: NavController, context: Context = LocalContext.curre
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(text = user.username)
-                            Button(
-                                onClick = {
-                                    val retrofit = Retrofit
-                                        .Builder()
-                                        .baseUrl(baseUrl)
-                                        .addConverterFactory(GsonConverterFactory.create())
-                                        .build()
-                                        .create(UserService::class.java)
-                                    val call = retrofit.delete(user.id)
-                                    call.enqueue(object : Callback<UserRespond> {
-                                        override fun onResponse(
-                                            call: Call<UserRespond>,
-                                            response: Response<UserRespond>
-                                        ) {
-                                            if (response.code() == 200) {
-                                                listUser.remove(user)
-                                            } else if (response.code() == 400) {
-                                                print("error login")
-                                                Toast.makeText(
-                                                    context,
-                                                    "Koneksi Gagal",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        }
-
-                                        override fun onFailure(
-                                            call: Call<UserRespond>,
-                                            t: Throwable
-                                        ) {
-                                            print(t.message)
-                                        }
-                                    })
-                                }
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete"
+                            Row {
+                                Button(
+                                    onClick = {
+                                        navController.navigate("edituser/" + user.id + "/" + user.username)
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        Color.Yellow
+                                    ),
+                                    modifier = Modifier.padding(end = 10.dp)
                                 )
+                                {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = "Edit User"
+                                    )
+                                }
+                                Button(
+                                    onClick = {
+                                        val retrofit = Retrofit
+                                            .Builder()
+                                            .baseUrl(baseUrl)
+                                            .addConverterFactory(GsonConverterFactory.create())
+                                            .build()
+                                            .create(UserService::class.java)
+                                        val call = retrofit.delete(user.id)
+                                        call.enqueue(object : Callback<UserRespond> {
+                                            override fun onResponse(
+                                                call: Call<UserRespond>,
+                                                response: Response<UserRespond>
+                                            ) {
+                                                if (response.code() == 200) {
+                                                    listUser.remove(user)
+                                                } else if (response.code() == 400) {
+                                                    print("error login")
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Koneksi Gagal",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+
+                                            override fun onFailure(
+                                                call: Call<UserRespond>,
+                                                t: Throwable
+                                            ) {
+                                                print(t.message)
+                                            }
+                                        })
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete"
+                                    )
+                                }
                             }
                         }
                     }
@@ -689,6 +721,76 @@ fun RegisterPage(navController: NavController, context: Context = LocalContext.c
                         }
                     )
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun EditUserPage(
+    navController: NavController,
+    context: Context = LocalContext.current,
+    userid: String?,
+    usernameParameter: String?
+) {
+    val preferencesManager = remember { PreferencesManager(context = context) }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf(TextFieldValue("")) }
+    var email by remember { mutableStateOf(TextFieldValue("")) }
+    if (usernameParameter != null) {
+        username = usernameParameter
+    }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(text = "Edit User") },
+            )
+        },
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            OutlinedTextField(value = username, onValueChange = { newText ->
+                username = newText
+            }, label = { Text("Username") }, modifier = Modifier.padding(top = 15.dp))
+            ElevatedButton(modifier = Modifier.padding(top = 15.dp),
+                onClick = {
+                var baseUrl = "http://10.0.2.2:1337/api/"
+                val retrofit = Retrofit.Builder()
+                    .baseUrl(baseUrl)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+                    .create(UserService::class.java)
+                val call = retrofit.save(userid, UpdateData(username))
+                call.enqueue(object : Callback<LoginRespond> {
+                    override fun onResponse(
+                        call: Call<LoginRespond>,
+                        response: Response<LoginRespond>
+                    ) {
+                        print(response.code())
+                        if (response.code() == 200) {
+                            navController.navigate("home")
+                        } else if (response.code() == 400) {
+                            print("error login")
+                            var toast = Toast.makeText(
+                                context,
+                                "Username atau password salah",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+
+                    override fun onFailure(call: Call<LoginRespond>, t: Throwable) {
+                        print(t.message)
+                    }
+
+                })
+            }) {
+                Text("Simpan")
             }
         }
     }
